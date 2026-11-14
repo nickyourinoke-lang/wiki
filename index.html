@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>搭建维基百科网站所需工具 - 维基构建指南</title>
+<style>
+  :root { --ink:#202122; --link:#3366cc; --rule:#a2a9b1; --panel:#ffffff; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: var(--ink); background:#dfe3e8; line-height:1.7;
+    /* 动画背景（来自上一任务的 GIF） */
+    background-image: url('reborn_wiki_bg.gif'); background-size:cover; background-position:center; background-attachment:fixed;
+  }
+  /* 半透明白纱，保证文字可读 */
+  body::before {
+    content:""; position:fixed; inset:0; background:rgba(255,255,255,.72); z-index:-1;
+  }
+  /* ===== 罗小黑 / 嘿咻 多状态光标（由 JS 动态切换图片）===== */
+  body.mc, body.mc * { cursor: inherit; }
+
+  header.top {
+    background:#fff; border-bottom:1px solid var(--rule);
+    padding:14px 22px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:5;
+    box-shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  header.top .logo { font-weight:800; font-size:20px; letter-spacing:.5px; }
+  header.top .logo small { color:#72777d; font-weight:500; font-size:13px; margin-left:8px; }
+  header.top input {
+    margin-left:auto; border:1px solid var(--rule); border-radius:6px; padding:7px 12px; width:260px; font-size:14px;
+  }
+  .layout { display:flex; max-width:1180px; margin:22px auto; padding:0 16px; gap:22px; }
+  aside.nav {
+    width:210px; flex:0 0 210px; background:var(--panel); border:1px solid var(--rule);
+    border-radius:8px; padding:14px 16px; height:fit-content; position:sticky; top:78px;
+  }
+  aside.nav h4 { margin:0 0 8px; font-size:13px; color:#72777d; text-transform:uppercase; letter-spacing:.6px; }
+  aside.nav a { display:block; color:var(--link); text-decoration:none; padding:5px 0; font-size:14px; }
+  aside.nav a:hover { text-decoration:underline; }
+  main.article {
+    flex:1; background:var(--panel); border:1px solid var(--rule); border-radius:8px;
+    padding:30px 38px; box-shadow:0 1px 4px rgba(0,0,0,.05);
+  }
+  main.article h1 { font-family:"Georgia","Times New Roman",serif; font-size:30px; margin:0 0 4px; border-bottom:1px solid var(--rule); padding-bottom:10px; }
+  main.article h2 { font-family:"Georgia",serif; font-size:22px; margin:28px 0 10px; border-bottom:1px solid #eaecf0; padding-bottom:6px; }
+  main.article h3 { font-size:17px; margin:18px 0 6px; }
+  main.article p, main.article li { font-size:15px; }
+  .subtitle { color:#54595d; font-size:14px; margin:0 0 18px; }
+  table.tbl { border-collapse:collapse; width:100%; margin:12px 0; font-size:14px; }
+  table.tbl th, table.tbl td { border:1px solid var(--rule); padding:8px 10px; text-align:left; vertical-align:top; }
+  table.tbl th { background:#f8f9fa; }
+  .tag { display:inline-block; background:#eaf3ff; color:#3366cc; border:1px solid #c8dcf0; border-radius:4px; padding:1px 7px; font-size:12px; margin-right:4px; }
+  .callout { background:#f8f9fa; border-left:4px solid #36c; padding:12px 16px; border-radius:0 6px 6px 0; margin:14px 0; font-size:14px; }
+  .cursor-tip { position:fixed; right:18px; bottom:18px; background:#202122; color:#fff; padding:10px 14px; border-radius:10px; font-size:13px; box-shadow:0 4px 14px rgba(0,0,0,.25); z-index:9; }
+  .cursor-tip b { color:#ffd86b; }
+  footer { text-align:center; color:#72777d; font-size:13px; padding:24px; }
+  code.k { background:#f3f4f6; border:1px solid #d0d3d8; border-radius:4px; padding:1px 6px; font-size:13px; }
+</style>
+</head>
+<body class="mc">
+<header class="top">
+  <div class="logo">维基构建指南<small>如何搭建一个属于自己的维基百科</small></div>
+  <input type="text" placeholder="搜索本指南…">
+</header>
+
+<div class="layout">
+  <aside class="nav">
+    <h4>目录</h4>
+    <a href="#overview">概述</a>
+    <a href="#engine">1. Wiki 引擎选型</a>
+    <a href="#runtime">2. 运行环境</a>
+    <a href="#host">3. 主机与域名</a>
+    <a href="#media">4. 存储与媒体</a>
+    <a href="#collab">5. 内容协作</a>
+    <a href="#ops">6. 备份与运维</a>
+    <a href="#combo">7. 推荐组合</a>
+    <a href="#refs">参考</a>
+  </aside>
+
+  <main class="article">
+    <h1>搭建维基百科网站所需工具</h1>
+    <p class="subtitle">本条目梳理从零搭建一个类维基百科（Wiki）网站所需的全部工具与技术栈。</p>
+
+    <h2 id="overview">概述</h2>
+    <p>“维基百科”本身是运行在 <b>MediaWiki</b> 引擎上的。但今天搭建一个维基站点，你并不必从零写程序——市面上有成熟的 <span class="tag">开源引擎</span>、<span class="tag">托管平台</span> 与 <span class="tag">容器方案</span>。搭建一套可公开访问、支持多人协作编辑的维基，通常需要下面六类工具：<b>引擎、运行环境、主机与域名、存储与媒体、协作与防滥用、备份与运维</b>。</p>
+
+    <h2 id="engine">1. Wiki 引擎选型</h2>
+    <p>引擎决定你用什么语言、数据库，以及后续扩展的难易。主流选择：</p>
+    <table class="tbl">
+      <tr><th>引擎</th><th>技术栈</th><th>数据库</th><th>上手难度</th><th>适合</th></tr>
+      <tr><td><b>MediaWiki</b>（维基百科同款）</td><td>PHP</td><td>MySQL / MariaDB</td><td>中</td><td>大型、强结构化的知识库</td></tr>
+      <tr><td><b>Wiki.js</b></td><td>Node.js</td><td>PostgreSQL / MySQL / SQLite</td><td>低</td><td>现代 UI、Markdown 优先</td></tr>
+      <tr><td><b>DokuWiki</b></td><td>PHP（无需数据库）</td><td>纯文件</td><td>低</td><td>轻量、内网文档</td></tr>
+      <tr><td><b>BookStack</b></td><td>PHP / Laravel</td><td>MySQL</td><td>低</td><td>书籍式手册</td></tr>
+      <tr><td><b>XWiki</b></td><td>Java</td><td>内置/HSQL/MySQL</td><td>高</td><td>企业级应用平台</td></tr>
+    </table>
+    <div class="callout">💡 新手建议从 <code class="k">Wiki.js</code>（或 <code class="k">DokuWiki</code>）起步；若要做“另一个维基百科”，选 <code class="k">MediaWiki</code> 最贴近。</div>
+
+    <h2 id="runtime">2. 运行环境</h2>
+    <p>引擎跑起来需要对应的运行时与 Web 服务器：</p>
+    <ul>
+      <li><b>Web 服务器</b>：<code class="k">Nginx</code>（推荐）或 <code class="k">Apache</code>，负责反向代理与静态资源。</li>
+      <li><b>语言运行时</b>：MediaWiki / DokuWiki / BookStack → <code class="k">PHP 8.1+</code>；Wiki.js → <code class="k">Node.js 18+</code>。</li>
+      <li><b>数据库</b>：<code class="k">MySQL 8 / MariaDB 10.6+</code> 或 <code class="k">PostgreSQL 14+</code>。</li>
+      <li><b>必需扩展</b>：PHP 侧需 <code class="k">mbstring / gd / intl / curl / xml</code> 等（MediaWiki 安装向导会自检）。</li>
+    </ul>
+
+    <h2 id="host">3. 主机与域名</h2>
+    <ul>
+      <li><b>主机</b>：1 核 2G 的云服务器（VPS）即可起步；流量增长再纵向扩容。</li>
+      <li><b>域名</b>：到域名注册商购买并完成 <b>ICP 备案</b>（中国大陆访问必需）。</li>
+      <li><b>DNS</b>：用 Cloudflare 或厂商 DNS 做 A/CNAME 解析。</li>
+      <li><b>HTTPS</b>：<code class="k">Let's Encrypt</code> 免费证书 + 自动续期（Certbot / Caddy 自带）。</li>
+    </ul>
+
+    <h2 id="media">4. 存储与媒体</h2>
+    <p>维基里图片、附件会越来越多：</p>
+    <ul>
+      <li>小站点直接用主机磁盘 + 定期备份即可。</li>
+      <li>大站点把上传目录挂到 <b>对象存储</b>（S3 / 阿里云 OSS / 腾讯云 COS）。</li>
+      <li>面向全球访问可加 <b>CDN</b> 加速静态资源。</li>
+    </ul>
+
+    <h2 id="collab">5. 内容协作与防滥用</h2>
+    <ul>
+      <li><b>编辑器</b>：VisualEditor（可视化）、Markdown 插件、或原生 wikitext。</li>
+      <li><b>账号与权限</b>：内置用户组 + 可选 <code class="k">LDAP / OAuth</code> 接入。</li>
+      <li><b>防滥用</b>：验证码（CAPTCHA / Turnstile）、垃圾链接过滤、编辑审核。</li>
+      <li><b>搜索</b>：内置搜索；大站可接 Elasticsearch / Meilisearch。</li>
+    </ul>
+
+    <h2 id="ops">6. 备份与运维</h2>
+    <ul>
+      <li><b>备份</b>：定时 dump 数据库 + 同步上传目录到异地/对象存储。</li>
+      <li><b>监控</b>：UptimeRobot / Prometheus 监测可用性与磁盘。</li>
+      <li><b>更新</b>：引擎与插件随官方安全公告及时升级。</li>
+    </ul>
+
+    <h2 id="combo">7. 推荐组合</h2>
+    <table class="tbl">
+      <tr><th>场景</th><th>组合</th></tr>
+      <tr><td>新手 / 个人</td><td>VPS + Nginx + Wiki.js + PostgreSQL + Cloudflare</td></tr>
+      <tr><td>经典维基百科复刻</td><td>VPS + Nginx + MediaWiki + MariaDB + VisualEditor</td></tr>
+      <tr><td>轻量内网文档</td><td>DokuWiki（纯文件，免数据库）+ Nginx</td></tr>
+    </table>
+
+    <h2 id="refs">参考</h2>
+    <ul>
+      <li>MediaWiki 官方文档：https://www.mediawiki.org</li>
+      <li>Wiki.js 文档：https://docs.requarks.io</li>
+      <li>DokuWiki 文档：https://www.dokuwiki.org</li>
+    </ul>
+  </main>
+</div>
+
+<div class="cursor-tip">🐾 静止=<b>小黑</b>｜移动=<b>嘿咻</b>｜点击=张口｜悬停链接=警觉｜右键=暴躁｜输入框=看书｜发呆7秒=睡觉</div>
+
+<footer>维基构建指南 · 演示页面 · 光标与背景均为本地生成素材</footer>
+
+<script>
+  // 罗小黑 / 嘿咻 多状态光标状态机
+  (function () {
+    var C = {
+      idle:  "cursor_xiaohei_idle.png",   // 静止：小黑
+      move:  "cursor_heixiu.png",         // 移动：嘿咻
+      alert: "cursor_xiaohei_alert.png",  // 悬停可点元素：警觉
+      angry: "cursor_xiaohei_angry.png",  // 右键：暴躁
+      click: "cursor_xiaohei_click.png",  // 按下：点击
+      text:  "cursor_xiaohei_text.png",   // 输入：看书
+      sleep: "cursor_xiaohei_sleep.png"   // 发呆：睡觉
+    };
+    var HOT = "30 34"; // 热点：面部/鼻子附近
+    var body = document.body;
+    var st = { moving: false, clicking: false, hover: false, text: false, sleep: false, angryUntil: 0 };
+    var moveTimer = null, idleTimer = null;
+
+    function apply() {
+      var now = Date.now(), s;
+      if (now < st.angryUntil)        s = "angry";
+      else if (st.clicking)           s = "click";
+      else if (st.moving)             s = "move";
+      else if (st.text)               s = "text";
+      else if (st.hover)              s = "alert";
+      else if (st.sleep)              s = "sleep";
+      else                           s = "idle";
+      body.style.cursor = "url('" + C[s] + "') " + HOT + ", auto";
+    }
+
+    function wake() {
+      st.sleep = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(function () { st.sleep = true; apply(); }, 7000);
+    }
+
+    window.addEventListener('mousemove', function () {
+      st.moving = true; wake();
+      clearTimeout(moveTimer);
+      moveTimer = setTimeout(function () { st.moving = false; apply(); }, 140);
+      apply();
+    }, { passive: true });
+
+    window.addEventListener('mousedown', function () { st.clicking = true; apply(); });
+    window.addEventListener('mouseup',   function () { st.clicking = false; apply(); });
+
+    window.addEventListener('mouseover', function (e) {
+      var t = e.target;
+      st.hover = !!(t.closest && t.closest('a,button,[role="button"],.tag,input,textarea,select'));
+      apply();
+    }, { passive: true });
+    window.addEventListener('mouseout', function () { st.hover = false; apply(); }, { passive: true });
+
+    window.addEventListener('contextmenu', function () { st.angryUntil = Date.now() + 1300; apply(); });
+
+    window.addEventListener('focusin', function (e) {
+      var t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) { st.text = true; apply(); }
+    });
+    window.addEventListener('focusout', function () { st.text = false; apply(); });
+
+    apply();
+  })();
+</script>
+</body>
+</html>
